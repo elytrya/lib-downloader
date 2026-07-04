@@ -24,7 +24,7 @@ python main.py "https://mangalib.me/ru/manga/52911--otonari-no-tenshi-sama-ni-it
 python main.py "https://mangalib.me/ru/manga/52911--otonari-no-tenshi-sama-ni-itsu-no-ma-ni-ka-dame-ningen-ni-sareteita-ken" --user-agent "Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1" 
 ```
 
-как работать это чудо:
+## как работать это чудо:
 1. определяет провайдера по домену ссылки (ranobelib.me / mangalib.me / mangalib.org).
 2. получает список всех глав тайтла. (`api.cdnlibs.org/api/manga/тайтл/chapters`)
 3. показывает список с чекбоксами:
