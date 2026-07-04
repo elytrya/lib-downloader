@@ -1,0 +1,5 @@
+requests>=2.31
+questionary>=2.0
+EbookLib>=0.18
+httpx[http2]
+python-dotenv
