@@ -110,7 +110,7 @@ def save_chapters_as_folders(
 
     for idx, ch in enumerate(chapters, start=1):
         safe_ch_name = _sanitize_name(ch.info.display_name) or f"chapter-{idx}"
-        folder_name = f"{idx:04d} - {safe_ch_name}"
+        folder_name = f"chapter-{idx} - {safe_ch_name}"
         chapter_dir = os.path.join(output_dir, folder_name)
         os.makedirs(chapter_dir, exist_ok=True)
 
