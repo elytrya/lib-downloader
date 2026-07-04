@@ -19,7 +19,7 @@ class RanobelibProvider(CdnlibsBaseProvider):
         if chapter.branch_id:
             params["branch_id"] = chapter.branch_id
 
-        data = self._get(f"{book.slug}/chapter", params=params)
+        data = self._get(f"manga/{book.slug}/chapter", params=params)
         item = data.get("data", {})
         content = item.get("content")
         html = render_doc(content) if content else ""

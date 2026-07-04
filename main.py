@@ -145,14 +145,18 @@ def main():
             output_path = args.output or f"{safe_title}.epub"
             if not output_path.lower().endswith(".epub"):
                 output_path += ".epub"
-            print(f"собираю epub: {output_path}")
+            print(
+                f"собираю epub: {output_path}  (если глав много сборка может занять больше времени)"
+            )
             build_epub(book, contents, output_path)
 
         elif mode == "cbz":
             output_path = args.output or f"{safe_title}.cbz"
             if not output_path.lower().endswith(".cbz"):
                 output_path += ".cbz"
-            print(f"собираю cbz: {output_path}")
+            print(
+                f"собираю cbz: {output_path} (если глав много сборка может занять больше времени) "
+            )
             build_cbz(book, contents, output_path)
 
         else:
