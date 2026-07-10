@@ -1,72 +1,36 @@
-"""
-общая часть для провайдеров, использующих апи cdnlibs.org
-достаёт слаг из ссылки, получает инфу о тайтле и список глав -
-это одинаково для всех сайтов семейства. Отличается только разбор
-содержимого конкретной главы (текст vs картинки) - это делают
-дочерние классы в fetch_chapter.
-"""
-
 import re
-from typing import List, Optional
-from urllib.parse import urlparse
+from typing import List, Optional, Tuple
 
 import requests
 
 from core.auth import load_auth_cookies
 from core.base_provider import BaseProvider
-from core.http_utils import PoliteSession
+from core.http_utils import PoliteSession, download_bytes
 from core.models import BookInfo, ChapterInfo
 
 API_BASE_URL = "https://api.cdnlibs.org/api"
-
-DEFAULT_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
-    ),
-    "Accept": "application/json",
-}
+IMAGE_REFERER = "https://cdnlibs.org/"
 
 
 class CdnlibsBaseProvider(BaseProvider):
     referer = "https://mangalib.me/"
 
     def __init__(self, session: Optional[PoliteSession] = None):
-        headers = dict(DEFAULT_HEADERS)
-        headers["Referer"] = self.referer
+        headers = {"Accept": "application/json", "Referer": self.referer}
         self.session = session or PoliteSession(headers=headers)
+        self._apply_auth()
 
-        auth_cookies = load_auth_cookies()
-        if "mangalib_token" in auth_cookies:
-            if hasattr(self.session, "headers"):
-                if isinstance(self.session.headers, dict):
-                    self.session.headers["Authorization"] = auth_cookies[
-                        "mangalib_token"
-                    ]
-                else:
-                    self.session.headers.update(
-                        {"Authorization": auth_cookies["mangalib_token"]}
-                    )
-            elif hasattr(self.session, "session") and hasattr(
-                self.session.session, "headers"
-            ):
-                self.session.session.headers["Authorization"] = auth_cookies[
-                    "mangalib_token"
-                ]
+    def _apply_auth(self) -> None:
+        auth = load_auth_cookies()
+        token = auth.get("mangalib_token")
+        if token:
+            self.session.headers["Authorization"] = token
+        sess = auth.get("mangalib_session")
+        if sess:
+            self.session.cookies.update({"mangalib_session": sess})
 
-        if "mangalib_session" in auth_cookies:
-            if hasattr(self.session, "session"):
-                self.session.session.cookies.update(
-                    {"mangalib_session": auth_cookies["mangalib_session"]}
-                )
-            elif hasattr(self.session, "cookies"):
-                self.session.cookies.update(
-                    {"mangalib_session": auth_cookies["mangalib_session"]}
-                )
-
-    def _get(self, path: str, params: dict = None) -> dict:
-        url = f"{API_BASE_URL}/{path}"
-        resp = self.session.get(url, params=params)
+    def _get(self, path: str, params: Optional[dict] = None) -> dict:
+        resp = self.session.get(f"{API_BASE_URL}/{path}", params=params)
         resp.raise_for_status()
         return resp.json()
 
@@ -121,3 +85,6 @@ class CdnlibsBaseProvider(BaseProvider):
             )
         chapters.sort(key=lambda c: c.index if c.index is not None else 0)
         return chapters
+
+    def download_page(self, url: str) -> Tuple[bytes, str]:
+        return download_bytes(url, headers={"Referer": IMAGE_REFERER})

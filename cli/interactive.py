@@ -1,7 +1,3 @@
-"""
-интеректив выбор глав для скачивания
-"""
-
 from typing import List
 
 import questionary
@@ -23,12 +19,11 @@ def select_chapters(chapters: List[ChapterInfo]) -> List[ChapterInfo]:
         "'a' — выбрать/снять ВСЕ главы сразу, Enter — подтвердить выбор.\n"
     )
 
-    selected_indexes = questionary.checkbox(
+    indexes = questionary.checkbox(
         "Выберите главы для скачивания:",
         choices=choices,
     ).ask()
 
-    if not selected_indexes:
+    if not indexes:
         return []
-
-    return [chapters[i] for i in selected_indexes]
+    return [chapters[i] for i in indexes]

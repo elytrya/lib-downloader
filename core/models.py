@@ -1,15 +1,9 @@
-"""
-общие модели данных, используемые всеми провайдерами
-"""
-
 from dataclasses import dataclass, field
 from typing import List, Optional
 
 
 @dataclass
 class ChapterInfo:
-    """описание одной главы (без содержимого)"""
-
     id: int
     volume: str
     number: str
@@ -26,16 +20,17 @@ class ChapterInfo:
 
 
 @dataclass
-class ChapterContent:
-    """
-    глава со скачанным содержимым.
-    для текстовых глав (ранобэ) заполнено html.
-    для глав-картинок (манга/манхва) заполнено pages - список ссылок на изображения.
-    """
+class PageImage:
+    url: str
+    data: Optional[bytes] = None
+    media_type: str = "image/jpeg"
 
+
+@dataclass
+class ChapterContent:
     info: ChapterInfo
     html: str = ""
-    pages: List[str] = field(default_factory=list)
+    pages: List[PageImage] = field(default_factory=list)
 
     @property
     def is_image_based(self) -> bool:
@@ -44,8 +39,6 @@ class ChapterContent:
 
 @dataclass
 class BookInfo:
-    """Метаданные книги/тайтла."""
-
     slug: str
     title: str
     author: Optional[str] = None

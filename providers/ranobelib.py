@@ -1,17 +1,10 @@
-"""
-провайдер для ranobelib.me
-"""
-
 from core.content_renderer import render_doc
 from core.models import BookInfo, ChapterContent, ChapterInfo
 from providers.cdnlibs_base import CdnlibsBaseProvider
 
 
 class RanobelibProvider(CdnlibsBaseProvider):
-    domains = [
-        "ranobelib.me"
-    ]  # я хз, есть ли еще зеркала, если есть создайте пулл реквест
-    # я видле то есть какой то новеллиб, но мне лень искать сорян
+    domains = ["ranobelib.me"]
     referer = "https://ranobelib.me/"
 
     def fetch_chapter(self, book: BookInfo, chapter: ChapterInfo) -> ChapterContent:

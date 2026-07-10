@@ -21,47 +21,53 @@ python main.py "https://mangalib.me/ru/manga/52911--otonari-no-tenshi-sama-ni-it
 python main.py "https://mangalib.me/ru/manga/52911--otonari-no-tenshi-sama-ni-itsu-no-ma-ni-ka-dame-ningen-ni-sareteita-ken" --mode folders -o "Ao no Hako"
 
 # с указанием кастом юзер агента
-python main.py "https://mangalib.me/ru/manga/52911--otonari-no-tenshi-sama-ni-itsu-no-ma-ni-ka-dame-ningen-ni-sareteita-ken" --user-agent "Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1" 
+python main.py "https://mangalib.me/ru/manga/52911--otonari-no-tenshi-sama-ni-itsu-no-ma-ni-ka-dame-ningen-ni-sareteita-ken" --user-agent "Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1"
 ```
 
-## как работать это чудо:
-1. определяет провайдера по домену ссылки (ranobelib.me / mangalib.me / mangalib.org).
-2. получает список всех глав тайтла. (`api.cdnlibs.org/api/manga/тайтл/chapters`)
+## как работает это чудо
+1. определяет провайдера по домену ссылки.
+2. получает список всех глав тайтла.
 3. показывает список с чекбоксами:
    - `Space` — выбрать/снять одну главу;
    - `a` — выбрать/снять **все** главы сразу;
    - `Enter` — подтвердить выбор и начать скачивание.
-4. спрашивает (или возьмёт из `--mode`), в каком виде сохранить:
-   - **epub** - один файл, подходит для ранобелиба
-   - **folders** - папка с подпапками `chapter-1`, `chapter-2`. картинки сохраняются в chapter-X/img/
-   - **cbz**: картинки пакуются в zip архив с иерархией Глава/страница.jpg
-между запросами к апи есть небольшая задержка (`core/http_utils.py`,
-по умолчанию 0.5с), чтобы не ебать апи слишком часто.
+4. для картиночных глав качает страницы с прогрессом `[i/N]` по каждой главе (как в ранобэ).
+5. спрашивает (или возьмёт из `--mode`), в каком виде сохранить:
+   - **epub** — один файл, подходит для ранобэ и для манги с вшитыми картинками;
+   - **cbz** — картинки пакуются в zip-архив с иерархией Глава/страница.jpg;
+   - **folders** — папка с подпапками `chapter-1`, `chapter-2`. картинки сохраняются в chapter-X/img/.
+
+между запросами к апи есть небольшая задержка (`core/http_utils.py`, по умолчанию 0.5с), чтобы не ебать апи слишком часто.
+
+## как добавить свой провайдер
+
+1. создайте `providers/my_site.py` с классом-наследником `core.base_provider.BaseProvider`.
+2. реализуйте `resolve_book`, `list_chapters`, `fetch_chapter`. если сайт не использует api.cdnlibs.org — реализация полностью своя, зависимости от `CdnlibsBaseProvider` нет.
+3. переопределите `download_page(url)` если для скачивания картинок нужны свои заголовки/сессия.
+4. зарегистрируйте класс в `providers/registry.py` (в списке `_PROVIDERS` или через `register_provider`).
+
+по умолчанию все результаты кладутся в папку `downloads/` в корне проекта (можно переопределить через `-o`).
 
 ## структура проекта
 
 ```
 lib-downloader/
-├── main.py                   # точка входа, запускает модули
+├── main.py                    # точка входа
+├── downloads/                 # сюда падают собранные .epub/.cbz и папки с главами
 ├── core/
-│   ├── models.py              # BookInfo, ChapterInfo, ChapterContent (текст ИЛИ картинки)
-│   ├── base_provider.py       # абстрактный класс провайдера (контракт)
-│   ├── content_renderer.py    # JSON-контент текстовой главы -> HTML
-│   ├── epub_builder.py        # сборка итогового .epub (текст и картинки)
-│   ├── asset_saver.py         # альтернативный режим: папки chapter-N
-│   ├── cbz_builder.py     # Сборка .cbz
-│   └── http_utils.py          # запросы с небольшой задержкой
+│   ├── models.py              # BookInfo, ChapterInfo, ChapterContent, PageImage
+│   ├── base_provider.py       # абстрактный класс провайдера
+│   ├── http_utils.py          # PoliteSession и helpers для скачивания
+│   ├── auth.py                # логин/сохранение токена в .env
+│   ├── content_renderer.py    # JSON контент главы -> HTML
+│   ├── epub_builder.py        # сборка .epub
+│   ├── cbz_builder.py         # сборка .cbz
+│   └── asset_saver.py         # сохранение в папки chapter-N
 ├── providers/
-│   ├── registry.py            # реестр провайдеров по доменам
+│   ├── registry.py            # реестр провайдеров
 │   ├── cdnlibs_base.py        # общая часть для сайтов на api.cdnlibs.org
-│   ├── ranobelib.py           # ranobelib.me
-│   └── mangalib.py            # mangalib.me / mangalib.org
-│   └── hentailib.py            # hentailib (лень делать)
+│   ├── mangalib.py            # mangalib.me / mangalib.org
+│   └── ranobelib.py           # ranobelib.me
 └── cli/
     └── interactive.py         # интерактивный чекбокс-выбор глав
 ```
-
-## примечания
-
-это чудо написано за вечер, так что если есть баги создавайте issues в свободное время пофикшу
-todo: добавить hentailib

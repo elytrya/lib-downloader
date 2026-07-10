@@ -1,16 +1,10 @@
-"""
-сборка EPUB-файла из уже скачанных глав.
-поддерживает два вида глав: текстовые (ch.html) и картиночные (ch.pages) -
-для манги/манхвы картинки докачиваются и вшиваются прямо в epub.
-"""
-
+import io
 import uuid
-from typing import List
+from typing import List, Tuple
 
-import requests
 from ebooklib import epub
 
-from core.http_utils import PoliteSession
+from core.http_utils import download_bytes, media_type_to_ext
 from core.models import BookInfo, ChapterContent
 
 _CSS = (
@@ -20,147 +14,93 @@ _CSS = (
     "img { max-width: 100%; height: auto; display: block; margin: 0 auto; }\n"
 )
 
-IMG_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-    "Referer": "https://cdnlibs.org/",
-}
+
+def _convert_webp_to_jpeg(content: bytes) -> Tuple[bytes, str]:
+    try:
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(content))
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        out = io.BytesIO()
+        img.save(out, format="JPEG")
+        return out.getvalue(), "image/jpeg"
+    except Exception:
+        return content, "image/webp"
 
 
-def _get_true_media_type(url: str, resp_headers: dict) -> str:
-    content_type = resp_headers.get("Content-Type", "").split(";")[0].strip()
-    if content_type.startswith("image/"):
-        return content_type
-
-    ext = url.rsplit(".", 1)[-1].lower().split("?")[0]
-    _EXT_TO_MEDIA = {
-        "jpg": "image/jpeg",
-        "jpeg": "image/jpeg",
-        "png": "image/png",
-        "webp": "image/webp",
-        "gif": "image/gif",
-    }
-    return _EXT_TO_MEDIA.get(ext, "image/jpeg")
-
-
-def build_epub(
-    book: BookInfo,
-    chapters: List[ChapterContent],
-    output_path: str,
-    session: PoliteSession = None,
-) -> None:
-    book_epub = epub.EpubBook()
-
-    book_epub.set_identifier(str(uuid.uuid4()))
-    book_epub.set_title(book.title)
-    book_epub.set_language("ru")
+def build_epub(book: BookInfo, chapters: List[ChapterContent], output_path: str) -> None:
+    epub_book = epub.EpubBook()
+    epub_book.set_identifier(str(uuid.uuid4()))
+    epub_book.set_title(book.title)
+    epub_book.set_language("ru")
     if book.author:
-        book_epub.add_author(book.author)
+        epub_book.add_author(book.author)
     if book.description:
-        book_epub.add_metadata("DC", "description", book.description)
+        epub_book.add_metadata("DC", "description", book.description)
 
     has_cover = False
     if book.cover_url:
         try:
-            # Качаем обложку через чистый requests
-            resp = requests.get(
-                book.cover_url, timeout=30, headers=IMG_HEADERS, stream=True
-            )
-            resp.raise_for_status()
-
-            content = b""
-            for chunk in resp.iter_content(1024 * 64):
-                content += chunk
-
-            media_type = _get_true_media_type(book.cover_url, resp.headers)
-            ext = media_type.split("/")[-1].replace("jpeg", "jpg")
-            book_epub.set_cover(f"cover.{ext}", content)
+            content, media_type = download_bytes(book.cover_url)
+            epub_book.set_cover(f"cover.{media_type_to_ext(media_type)}", content)
             has_cover = True
         except Exception as e:
             print(f"    [!] Не удалось добавить обложку: {e}")
 
     css_item = epub.EpubItem(
-        uid="style",
-        file_name="style/main.css",
-        media_type="text/css",
-        content=_CSS,
+        uid="style", file_name="style/main.css", media_type="text/css", content=_CSS
     )
-    book_epub.add_item(css_item)
+    epub_book.add_item(css_item)
 
     epub_chapters = []
     for idx, ch in enumerate(chapters, start=1):
-        file_name = f"chapter_{idx:04d}.xhtml"
         html_chapter = epub.EpubHtml(
             title=ch.info.display_name,
-            file_name=file_name,
+            file_name=f"chapter_{idx:04d}.xhtml",
             lang="ru",
         )
 
         if ch.is_image_based:
             body_parts = []
-            for page_idx, image_url in enumerate(ch.pages, start=1):
-                try:
-                    # Качаем сканы через чистый requests чанками по 64 КБ
-                    resp = requests.get(image_url, headers=IMG_HEADERS, stream=True)
-                    resp.raise_for_status()
-
-                    content = b""
-                    for chunk in resp.iter_content(1024 * 64):
-                        content += chunk
-                except Exception as e:
-                    print(
-                        f"    [!] Ошибка скачивания страницы {page_idx} (Глава {idx}): {e}"
-                    )
+            for page_idx, page in enumerate(ch.pages, start=1):
+                if not page.data:
                     continue
-
-                media_type = _get_true_media_type(image_url, resp.headers)
-
+                content = page.data
+                media_type = page.media_type
                 if "webp" in media_type:
-                    try:
-                        import io
+                    content, media_type = _convert_webp_to_jpeg(content)
 
-                        from PIL import Image
-
-                        img = Image.open(io.BytesIO(content))
-                        if img.mode in ("RGBA", "P"):
-                            img = img.convert("RGB")
-                        out = io.BytesIO()
-                        img.save(out, format="JPEG")
-                        content = out.getvalue()
-                        media_type = "image/jpeg"
-                    except ImportError:
-                        pass
-
-                ext = media_type.split("/")[-1].replace("jpeg", "jpg")
+                ext = media_type_to_ext(media_type)
                 image_file_name = f"images/ch{idx:04d}_p{page_idx:04d}.{ext}"
-
-                image_item = epub.EpubItem(
-                    uid=f"img_{idx}_{page_idx}",
-                    file_name=image_file_name,
-                    media_type=media_type,
-                    content=content,
+                epub_book.add_item(
+                    epub.EpubItem(
+                        uid=f"img_{idx}_{page_idx}",
+                        file_name=image_file_name,
+                        media_type=media_type,
+                        content=content,
+                    )
                 )
-                book_epub.add_item(image_item)
-
                 body_parts.append(
                     f'<div class="page"><img src="{image_file_name}" alt="page_{page_idx}"/></div>'
                 )
 
-            html_chapter.content = f"<h2>{ch.info.display_name}</h2>\n" + "\n".join(
-                body_parts
+            html_chapter.content = (
+                f"<h2>{ch.info.display_name}</h2>\n" + "\n".join(body_parts)
             )
         else:
             html_chapter.content = f"<h2>{ch.info.display_name}</h2>\n{ch.html}"
 
         html_chapter.add_item(css_item)
-        book_epub.add_item(html_chapter)
+        epub_book.add_item(html_chapter)
         epub_chapters.append(html_chapter)
 
-    book_epub.toc = epub_chapters
-    book_epub.add_item(epub.EpubNcx())
-    book_epub.add_item(epub.EpubNav())
+    epub_book.toc = epub_chapters
+    epub_book.add_item(epub.EpubNcx())
+    epub_book.add_item(epub.EpubNav())
 
     spine = ["cover"] if has_cover else []
     spine += ["nav"] + epub_chapters
-    book_epub.spine = spine
+    epub_book.spine = spine
 
-    epub.write_epub(output_path, book_epub, {})
+    epub.write_epub(output_path, epub_book, {})
