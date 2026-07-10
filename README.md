@@ -1,6 +1,6 @@
 # lib-downloader
 
-CLI инструмент для скачивания глав манги, манхвы и ранобэ с семейств сайтов mangalib.me (mangalib.me, mangalib.org, ranobelib.me). Поддерживает сборку в один файл или сохранение структурированными папками.
+CLI инструмент для скачивания глав манги, манхвы и ранобэ с семейств сайтов mangalib.me (mangalib.me, mangalib.org, ranobelib.me, hentailib). Поддерживает сборку в один файл или сохранение структурированными папками.
 
 ## установка
 
@@ -68,6 +68,7 @@ lib-downloader/
 │   ├── cdnlibs_base.py        # общая часть для сайтов на api.cdnlibs.org
 │   ├── mangalib.py            # mangalib.me / mangalib.org
 │   └── ranobelib.py           # ranobelib.me
+│   └── hentailib.py           # hentailib
 └── cli/
     └── interactive.py         # интерактивный чекбокс-выбор глав
 ```
