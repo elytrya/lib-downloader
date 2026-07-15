@@ -1,0 +1,75 @@
+# Byte-compiled / optimized Python files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables
+.env
+.env.*
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Logs
+*.log
+
+# Tests / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Type checkers
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
+# Django
+*.sqlite3
+media/
+staticfiles/
+
+# Flask
+instance/
+
+# Celery
+celerybeat-schedule
+
+# Local settings
+local_settings.py
+
+# Secrets
+*.pem
+*.key
+secrets/
